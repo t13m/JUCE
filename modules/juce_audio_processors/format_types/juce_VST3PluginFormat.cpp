@@ -1068,7 +1068,8 @@ struct DescriptionLister
 
     static std::vector<PluginDescription> findDescriptionsSlow (VST3HostContext& host,
                                                                 IPluginFactory& factory,
-                                                                const File& file)
+                                                                const File& file,
+                                                                std::function<void (const PluginDescription&)> callback = {})
     {
         std::vector<PluginDescription> result;
 
@@ -1159,8 +1160,12 @@ struct DescriptionLister
             if (araMainFactoryClassNames.find (name) != araMainFactoryClassNames.end())
                 desc.hasARAExtension = true;
 
-            if (desc.uniqueId != 0)
+            if (desc.uniqueId != 0) {
                 result.push_back (desc);
+                if (callback) {
+                    callback(desc);
+                }
+            }
         }
 
         return result;
@@ -4127,17 +4132,16 @@ bool VST3PluginFormat::setStateFromVSTPresetFile (AudioPluginInstance* api, cons
 
     return false;
 }
-
-void VST3PluginFormat::findAllTypesForFile (OwnedArray<PluginDescription>& results, const String& fileOrIdentifier)
+void VST3PluginFormat::findAllTypesForFileCallback (const String& fileOrIdentifier, std::function<void(const PluginDescription&)> callback)
 {
     if (! fileMightContainThisPluginType (fileOrIdentifier))
         return;
 
     if (const auto fast = DescriptionLister::findDescriptionsFast (File (fileOrIdentifier)); ! fast.empty())
     {
-        for (const auto& d : fast)
-            results.add (new PluginDescription (d));
-
+        for (const auto& d : fast) {
+            callback(d);
+        }
         return;
     }
 
@@ -4161,9 +4165,16 @@ void VST3PluginFormat::findAllTypesForFile (OwnedArray<PluginDescription>& resul
 
         auto host = addVSTComSmartPtrOwner (new VST3HostContext());
 
-        for (const auto& d : DescriptionLister::findDescriptionsSlow (*host, *pluginFactory, File (file)))
-            results.add (new PluginDescription (d));
+        DescriptionLister::findDescriptionsSlow (*host, *pluginFactory, File (file), callback);
     }
+}
+
+void VST3PluginFormat::findAllTypesForFile (OwnedArray<PluginDescription>& results, const String& fileOrIdentifier)
+{
+    findAllTypesForFileCallback (fileOrIdentifier, [&results] (const PluginDescription& d)
+    {
+        results.add (new PluginDescription (d));
+    });
 }
 
 void VST3PluginFormat::createARAFactoryAsync (const PluginDescription& description, ARAFactoryCreationCallback callback)

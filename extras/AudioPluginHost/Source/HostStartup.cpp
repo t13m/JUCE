@@ -59,7 +59,7 @@ private:
 
         const std::lock_guard<std::mutex> lock (mutex);
 
-        if (const auto results = doScan (mb); ! results.isEmpty())
+        if (const auto results = doScan (mb, [this](const PluginDescription& desc) { sendTemporalResult(desc); }); ! results.isEmpty())
         {
             sendResults (results);
         }
@@ -84,12 +84,15 @@ private:
             if (pendingBlocks.empty())
                 return;
 
-            sendResults (doScan (pendingBlocks.front()));
+            sendResults (doScan (pendingBlocks.front(), [this](const PluginDescription& desc)
+            {
+                sendTemporalResult (desc);
+            }));
             pendingBlocks.pop();
         }
     }
 
-    OwnedArray<PluginDescription> doScan (const MemoryBlock& block)
+    OwnedArray<PluginDescription> doScan (const MemoryBlock& block, std::function<void(const PluginDescription&)> callback = {})
     {
         MemoryInputStream stream { block, false };
         const auto formatName = stream.readString();
@@ -114,7 +117,13 @@ private:
             && (MessageManager::getInstance()->isThisTheMessageThread()
                 || matchingFormat->requiresUnblockedMessageThreadDuringCreation (pd)))
         {
-            matchingFormat->findAllTypesForFile (results, identifier);
+            matchingFormat->findAllTypesForFileCallback (identifier, [&results, callback](const PluginDescription& desc)
+            {
+                results.add (new PluginDescription (desc));
+
+                if (callback != nullptr)
+                    callback (desc);
+            });
         }
 
         return results;
@@ -126,6 +135,15 @@ private:
 
         for (const auto& desc : results)
             xml.addChildElement (desc->createXml().release());
+
+        const auto str = xml.toString();
+        sendMessageToCoordinator ({ str.toRawUTF8(), str.getNumBytesAsUTF8() });
+    }
+    void sendTemporalResult (const PluginDescription& desc)
+    {
+        XmlElement xml ("ITEM");
+
+        xml.addChildElement (desc.createXml().release());
 
         const auto str = xml.toString();
         sendMessageToCoordinator ({ str.toRawUTF8(), str.getNumBytesAsUTF8() });

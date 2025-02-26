@@ -179,12 +179,21 @@ private:
 
             if (response.xml != nullptr)
             {
-                for (const auto* item : response.xml->getChildIterator())
-                {
-                    auto desc = std::make_unique<PluginDescription>();
+                if (response.xml->hasTagName ("LIST")) {
+                    for (const auto* item : response.xml->getChildIterator())
+                    {
+                        auto desc = std::make_unique<PluginDescription>();
 
-                    if (desc->loadFromXml (*item))
-                        result.add (std::move (desc));
+                        if (desc->loadFromXml (*item))
+                            result.add (std::move (desc));
+                    }
+                } else if (response.xml->hasTagName("ITEM")) {
+                    const auto* item = response.xml->getFirstChildElement();
+                    auto desc = std::make_unique<PluginDescription>();
+                    if (desc->loadFromXml(*item)) {
+                        std::cout << "Found plugin: " << desc->name << std::endl;
+                    }
+                    continue;
                 }
             }
 
