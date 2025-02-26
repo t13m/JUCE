@@ -104,4 +104,11 @@ void AudioPluginFormat::handleMessage (const Message& message)
         createPluginInstance (m->desc, m->sampleRate, m->bufferSize, std::move (m->callbackToUse));
 }
 
+void AudioPluginFormat::findAllTypesForFileCallback (const String& fileOrIdentifier, std::function<void(const PluginDescription&)> callback) {
+    OwnedArray<PluginDescription> results;
+    findAllTypesForFile(results, fileOrIdentifier);
+    for (auto* desc : results)
+        callback(*desc);
+}
+
 } // namespace juce

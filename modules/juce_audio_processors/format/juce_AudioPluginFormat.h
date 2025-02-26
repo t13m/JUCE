@@ -67,6 +67,8 @@ public:
     virtual void findAllTypesForFile (OwnedArray<PluginDescription>& results,
                                       const String& fileOrIdentifier) = 0;
 
+    virtual void findAllTypesForFileCallback (const String& fileOrIdentifier, std::function<void(const PluginDescription&)> callback);
+
     /** Tries to recreate a type from a previously generated PluginDescription.
         @see AudioPluginFormatManager::createInstance
     */

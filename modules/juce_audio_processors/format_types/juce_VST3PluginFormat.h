@@ -71,6 +71,7 @@ public:
     bool isTrivialToScan() const override           { return false; }
 
     void findAllTypesForFile (OwnedArray<PluginDescription>&, const String& fileOrIdentifier) override;
+    void findAllTypesForFileCallback (const String& fileOrIdentifier, std::function<void(const PluginDescription&)> callback) override;
     bool fileMightContainThisPluginType (const String& fileOrIdentifier) override;
     String getNameOfPluginFromIdentifier (const String& fileOrIdentifier) override;
     bool pluginNeedsRescanning (const PluginDescription&) override;
